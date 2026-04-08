@@ -1,0 +1,1185 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>올리브영 섬유향수 VOC 대시보드</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;900&display=swap');
+
+:root {
+  --bg: #0a0a0f;
+  --surface: #12121a;
+  --surface2: #1a1a26;
+  --border: #2a2a3a;
+  --text: #e8e8f0;
+  --text2: #9898b0;
+  --accent: #6c5ce7;
+  --liber: #ff6b9d;
+  --vivian: #ffd93d;
+  --mumchit: #6bcb77;
+  --wdress: #4d96ff;
+  --snuggle: #ff922b;
+  --pos: #6bcb77;
+  --neg: #ff6b6b;
+  --mix: #ffd93d;
+  --neutral: #666;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family:'Noto Sans KR',sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  overflow-x:hidden;
+}
+
+/* Header */
+.header {
+  padding:40px 48px 20px;
+  background:linear-gradient(135deg, #0a0a0f 0%, #1a1028 50%, #0a0a0f 100%);
+  border-bottom:1px solid var(--border);
+}
+.header h1 {
+  font-size:28px;
+  font-weight:900;
+  letter-spacing:-1px;
+  background:linear-gradient(135deg, #ff6b9d, #6c5ce7, #4d96ff);
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+}
+.header .sub {
+  color:var(--text2);
+  font-size:13px;
+  margin-top:6px;
+}
+.header .stats {
+  display:flex;
+  gap:24px;
+  margin-top:16px;
+}
+.header .stat {
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding:12px 20px;
+  font-size:13px;
+}
+.header .stat strong {
+  font-size:22px;
+  font-weight:700;
+  display:block;
+  margin-bottom:2px;
+}
+
+/* Tabs */
+.tabs {
+  display:flex;
+  gap:0;
+  padding:0 48px;
+  background:var(--surface);
+  border-bottom:1px solid var(--border);
+  position:sticky;
+  top:0;
+  z-index:100;
+}
+.tab {
+  padding:14px 24px;
+  font-size:14px;
+  font-weight:500;
+  cursor:pointer;
+  color:var(--text2);
+  border-bottom:2px solid transparent;
+  transition:all .2s;
+  user-select:none;
+}
+.tab:hover { color:var(--text); }
+.tab.active {
+  color:var(--accent);
+  border-bottom-color:var(--accent);
+  font-weight:600;
+}
+
+/* Content */
+.content { padding:32px 48px; }
+.panel { display:none; }
+.panel.active { display:block; }
+
+/* Bubble Chart */
+#bubble-container {
+  width:100%;
+  height:620px;
+  background:radial-gradient(ellipse at 30% 20%, #1a1a30 0%, #12121a 50%, #0a0a12 100%);
+  border-radius:16px;
+  border:1px solid var(--border);
+  position:relative;
+  overflow:hidden;
+}
+#bubble-svg .bubble-group { cursor:pointer; }
+#bubble-svg .bubble-group:hover .bubble-main { filter:brightness(1.2); }
+#bubble-svg .bubble-group:hover { transform-origin:center; }
+.bubble-nav {
+  position:absolute;
+  top:16px;
+  left:20px;
+  display:flex;
+  gap:8px;
+  align-items:center;
+  z-index:10;
+}
+.bubble-nav span {
+  font-size:13px;
+  color:var(--text2);
+  cursor:pointer;
+  transition:color .2s;
+}
+.bubble-nav span:hover { color:var(--text); }
+.bubble-nav span.current { color:var(--accent); font-weight:600; }
+.bubble-nav .sep { color:#444; }
+.bubble-hint {
+  position:absolute;
+  bottom:16px;
+  right:20px;
+  font-size:12px;
+  color:var(--text2);
+  opacity:.6;
+}
+
+/* Keyword section */
+.kw-grid {
+  display:grid;
+  grid-template-columns:repeat(5, 1fr);
+  gap:16px;
+}
+.kw-card {
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:20px;
+  transition:border-color .2s;
+}
+.kw-card:hover { border-color:var(--accent); }
+.kw-card .brand-name {
+  font-size:15px;
+  font-weight:700;
+  margin-bottom:12px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.kw-card .brand-dot {
+  width:10px;
+  height:10px;
+  border-radius:50%;
+  display:inline-block;
+}
+.kw-bar-row {
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin-bottom:6px;
+  font-size:12px;
+}
+.kw-bar-label {
+  width:72px;
+  text-align:right;
+  color:var(--text2);
+  flex-shrink:0;
+  font-size:11px;
+}
+.kw-bar-track {
+  flex:1;
+  height:16px;
+  background:var(--surface2);
+  border-radius:4px;
+  overflow:hidden;
+}
+.kw-bar-fill {
+  height:100%;
+  border-radius:4px;
+  transition:width .6s ease;
+}
+.kw-bar-val {
+  width:36px;
+  text-align:right;
+  font-size:11px;
+  color:var(--text2);
+  flex-shrink:0;
+}
+.kw-section-title {
+  font-size:11px;
+  font-weight:600;
+  color:var(--text2);
+  margin:12px 0 6px;
+  text-transform:uppercase;
+  letter-spacing:1px;
+}
+
+/* Sentiment section */
+.sent-grid {
+  display:grid;
+  grid-template-columns:repeat(5, 1fr);
+  gap:16px;
+  margin-bottom:32px;
+}
+.sent-card {
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:20px;
+}
+.sent-card .brand-name {
+  font-size:15px;
+  font-weight:700;
+  margin-bottom:16px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.donut-wrap {
+  display:flex;
+  justify-content:center;
+  margin-bottom:12px;
+}
+.sent-legend {
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  justify-content:center;
+  font-size:11px;
+}
+.sent-legend span {
+  display:flex;
+  align-items:center;
+  gap:4px;
+}
+.sent-legend .dot {
+  width:8px;
+  height:8px;
+  border-radius:50%;
+  display:inline-block;
+}
+
+/* Voice section */
+.voice-grid {
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:24px;
+}
+.voice-col h3 {
+  font-size:16px;
+  font-weight:700;
+  margin-bottom:16px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.voice-item {
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding:16px;
+  margin-bottom:10px;
+  font-size:13px;
+  line-height:1.6;
+  position:relative;
+}
+.voice-item .v-brand {
+  font-size:11px;
+  font-weight:600;
+  margin-bottom:6px;
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+.voice-item .v-option {
+  font-size:11px;
+  color:var(--text2);
+  margin-top:6px;
+}
+.voice-filter {
+  display:flex;
+  gap:8px;
+  margin-bottom:20px;
+  flex-wrap:wrap;
+}
+.voice-filter button {
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:20px;
+  padding:6px 16px;
+  color:var(--text2);
+  font-size:12px;
+  font-family:inherit;
+  cursor:pointer;
+  transition:all .2s;
+}
+.voice-filter button:hover { border-color:var(--accent); color:var(--text); }
+.voice-filter button.active { background:var(--accent); border-color:var(--accent); color:#fff; }
+
+/* Raw Data */
+.raw-controls {
+  display:flex;
+  gap:12px;
+  margin-bottom:16px;
+  flex-wrap:wrap;
+  align-items:center;
+}
+.raw-controls input {
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:8px;
+  padding:8px 14px;
+  color:var(--text);
+  font-size:13px;
+  font-family:inherit;
+  width:280px;
+}
+.raw-controls select {
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:8px;
+  padding:8px 14px;
+  color:var(--text);
+  font-size:13px;
+  font-family:inherit;
+}
+.raw-count {
+  font-size:13px;
+  color:var(--text2);
+  margin-left:auto;
+}
+table {
+  width:100%;
+  border-collapse:collapse;
+  font-size:12px;
+}
+thead th {
+  background:var(--surface2);
+  padding:10px 12px;
+  text-align:left;
+  font-weight:600;
+  border-bottom:1px solid var(--border);
+  position:sticky;
+  top:44px;
+  z-index:5;
+}
+tbody td {
+  padding:10px 12px;
+  border-bottom:1px solid var(--border);
+  max-width:400px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+tbody tr:hover { background:var(--surface); }
+.table-wrap {
+  max-height:600px;
+  overflow:auto;
+  border-radius:12px;
+  border:1px solid var(--border);
+}
+
+/* Comparison bar */
+.compare-section {
+  margin-top:32px;
+}
+.compare-section h3 {
+  font-size:16px;
+  font-weight:700;
+  margin-bottom:16px;
+}
+.compare-row {
+  display:flex;
+  align-items:center;
+  gap:12px;
+  margin-bottom:8px;
+  font-size:13px;
+}
+.compare-label {
+  width:90px;
+  text-align:right;
+  color:var(--text2);
+  font-size:12px;
+}
+.compare-bars {
+  flex:1;
+  display:flex;
+  gap:3px;
+  align-items:center;
+}
+.compare-bar {
+  height:22px;
+  border-radius:4px;
+  transition:width .8s ease;
+  position:relative;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:10px;
+  font-weight:600;
+  color:#fff;
+  min-width:2px;
+}
+
+/* Brand colors */
+.bc-liber { background:var(--liber); }
+.bc-vivian { background:var(--vivian); color:#333; }
+.bc-mumchit { background:var(--mumchit); color:#333; }
+.bc-wdress { background:var(--wdress); }
+.bc-snuggle { background:var(--snuggle); color:#333; }
+
+/* Responsive */
+@media(max-width:1200px) {
+  .kw-grid, .sent-grid { grid-template-columns:repeat(3, 1fr); }
+}
+@media(max-width:768px) {
+  .header { padding:24px; }
+  .content { padding:24px; }
+  .tabs { padding:0 24px; }
+  .kw-grid, .sent-grid { grid-template-columns:1fr; }
+  .voice-grid { grid-template-columns:1fr; }
+  .header .stats { flex-wrap:wrap; gap:8px; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>섬유향수 VOC 대시보드</h1>
+  <div class="sub">올리브영 Best 5 브랜드 리뷰 분석 · 리베르(자사) vs 경쟁 4사</div>
+  <div class="stats">
+    <div class="stat"><strong>1,049</strong>총 리뷰</div>
+    <div class="stat"><strong>5</strong>분석 브랜드</div>
+    <div class="stat"><strong>2021.08 ~ 2026.04</strong>수집 기간</div>
+    <div class="stat" style="border-color:var(--liber)"><strong style="color:var(--liber)">리베르 ★</strong>자사 브랜드</div>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" data-tab="bubble">🫧 버블 드릴다운</div>
+  <div class="tab" data-tab="keyword">🔍 키워드 분석</div>
+  <div class="tab" data-tab="voice">💬 소비자 목소리</div>
+  <div class="tab" data-tab="raw">📋 로우데이터</div>
+</div>
+
+<div class="content">
+
+  <!-- TAB 1: Bubble Drilldown -->
+  <div class="panel active" id="panel-bubble">
+    <div id="bubble-container">
+      <div class="bubble-nav" id="bubble-nav"></div>
+      <div class="bubble-hint">클릭하여 드릴다운 · 바깥 클릭으로 뒤로가기</div>
+      <svg id="bubble-svg" width="100%" height="100%"></svg>
+    </div>
+
+    <div class="compare-section">
+      <h3>브랜드 비교 — 핵심 키워드 언급률</h3>
+      <div id="compare-bars"></div>
+    </div>
+  </div>
+
+  <!-- TAB 2: Keyword -->
+  <div class="panel" id="panel-keyword">
+    <div class="kw-grid" id="kw-grid"></div>
+  </div>
+
+  <!-- TAB 3: Voice -->
+  <div class="panel" id="panel-voice">
+    <div class="voice-filter" id="voice-filter"></div>
+    <div class="sent-grid" id="sent-grid"></div>
+    <div class="voice-grid" id="voice-grid"></div>
+  </div>
+
+  <!-- TAB 4: Raw Data -->
+  <div class="panel" id="panel-raw">
+    <div class="raw-controls">
+      <input type="text" id="raw-search" placeholder="리뷰 검색...">
+      <select id="raw-brand-filter"><option value="">전체 브랜드</option></select>
+      <select id="raw-sent-filter"><option value="">전체 감성</option></select>
+      <span class="raw-count" id="raw-count"></span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th style="width:60px">브랜드</th>
+          <th style="width:100px">향 옵션</th>
+          <th>리뷰</th>
+          <th style="width:60px">감성</th>
+          <th style="width:80px">날짜</th>
+        </tr></thead>
+        <tbody id="raw-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════
+// DATA
+// ═══════════════════════════════════════
+const BRANDS = ['리베르','비비앙','멈칫','w드레스룸','스너글'];
+const BRAND_COLORS = {
+  '리베르':'#ff6b9d','비비앙':'#ffd93d','멈칫':'#6bcb77',
+  'w드레스룸':'#4d96ff','스너글':'#ff922b'
+};
+const BRAND_CLASS = {
+  '리베르':'bc-liber','비비앙':'bc-vivian','멈칫':'bc-mumchit',
+  'w드레스룸':'bc-wdress','스너글':'bc-snuggle'
+};
+
+const brandOptions = {"리베르":{"사이":182,"선드라이":65,"헤베":33,"민테":1},"비비앙":{"월넛크릭그린":88,"에끌로에":28,"아티카":23,"콜린":16,"엠버바닐라 앤 데이지":8,"오디너리":8,"플로라 부케":7,"일랑일랑무드":5,"로스트 우드":3},"멈칫":{"소프트블루솝":59,"마젠타레이디":46,"블루밍부케":24,"자몽허니블랙티":18,"페일그린허브":15,"화이트코튼":14,"퍼플머스크":10},"w드레스룸":{"에이프릴코튼":81,"플라워 샵":41,"탠저린 팜":31,"피치블라썸":30,"화이트솝":15,"메이 로즈":6},"스너글":{"허거블 코튼":54,"블루 스파클":35,"스파클링 시트러스":30,"허거블 선샤인":19,"멜로우 선샤인":14}};
+
+const kwData = {
+  '향 좋음':{'리베르':57.7,'비비앙':44.4,'멈칫':42.5,'w드레스룸':23.0,'스너글':28.6},
+  '지속력 좋음':{'리베르':18.5,'비비앙':16.9,'멈칫':29.0,'w드레스룸':11.8,'스너글':15.3},
+  '분사력 좋음':{'리베르':6.4,'비비앙':9.5,'멈칫':3.2,'w드레스룸':2.5,'스너글':5.3},
+  '가성비':{'리베르':4.6,'비비앙':4.8,'멈칫':7.5,'w드레스룸':9.3,'스너글':13.8},
+  '재구매':{'리베르':3.6,'비비앙':9.0,'멈칫':10.8,'w드레스룸':11.8,'스너글':10.6},
+  '탈취':{'리베르':10.0,'비비앙':9.0,'멈칫':14.0,'w드레스룸':10.8,'스너글':26.5},
+  '빨래/침구':{'리베르':30.2,'비비앙':12.2,'멈칫':15.6,'w드레스룸':10.3,'스너글':17.5},
+  '지속력 부족':{'리베르':1.4,'비비앙':2.1,'멈칫':2.2,'w드레스룸':1.5,'스너글':1.6},
+  '향 불만':{'리베르':21.7,'비비앙':11.1,'멈칫':22.0,'w드레스룸':12.3,'스너글':14.3},
+};
+
+const sentData = {
+  '리베르':{긍정:89.0,부정:2.1,혼합:2.5,중립:6.4},
+  '비비앙':{긍정:72.0,부정:2.6,혼합:5.8,중립:19.6},
+  '멈칫':{긍정:73.7,부정:5.4,혼합:4.3,중립:16.7},
+  'w드레스룸':{긍정:68.6,부정:1.5,혼합:7.8,중립:22.1},
+  '스너글':{긍정:72.5,부정:2.6,혼합:2.1,중립:22.8},
+};
+
+const brandCounts = {'리베르':281,'비비앙':189,'멈칫':186,'w드레스룸':204,'스너글':189};
+
+// ═══════════════════════════════════════
+// TABS
+// ═══════════════════════════════════════
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById('panel-' + t.dataset.tab).classList.add('active');
+    if(t.dataset.tab === 'bubble') initBubble();
+  });
+});
+
+// ═══════════════════════════════════════
+// BUBBLE DRILLDOWN
+// ═══════════════════════════════════════
+let bubbleLevel = 0;
+let bubblePath = [];
+
+function initBubble() {
+  bubbleLevel = 0;
+  bubblePath = [];
+  drawBubbleLevel0();
+}
+
+// SVG defs for 3D bubble effect
+function ensureDefs(svg) {
+  let defs = svg.select('defs');
+  if (defs.empty()) defs = svg.append('defs');
+  return defs;
+}
+
+function create3DBubbleGradient(defs, id, baseColor) {
+  // Remove existing
+  defs.select('#' + id).remove();
+  defs.select('#' + id + '-shadow').remove();
+  defs.select('#' + id + '-shine').remove();
+
+  // Main radial gradient (3D sphere)
+  const grad = defs.append('radialGradient').attr('id', id)
+    .attr('cx', '35%').attr('cy', '30%').attr('r', '65%');
+  const c = d3.color(baseColor);
+  const lighter = d3.color(baseColor); lighter.opacity = 1;
+  grad.append('stop').attr('offset', '0%').attr('stop-color', d3.rgb(c).brighter(1.5));
+  grad.append('stop').attr('offset', '40%').attr('stop-color', baseColor);
+  grad.append('stop').attr('offset', '100%').attr('stop-color', d3.rgb(c).darker(1.8));
+
+  // Drop shadow filter
+  const filter = defs.append('filter').attr('id', id + '-shadow')
+    .attr('x', '-30%').attr('y', '-30%').attr('width', '160%').attr('height', '160%');
+  filter.append('feDropShadow').attr('dx', 0).attr('dy', 4).attr('stdDeviation', 8)
+    .attr('flood-color', baseColor).attr('flood-opacity', 0.35);
+
+  // Shine overlay gradient
+  const shine = defs.append('radialGradient').attr('id', id + '-shine')
+    .attr('cx', '32%').attr('cy', '25%').attr('r', '50%');
+  shine.append('stop').attr('offset', '0%').attr('stop-color', '#fff').attr('stop-opacity', 0.6);
+  shine.append('stop').attr('offset', '100%').attr('stop-color', '#fff').attr('stop-opacity', 0);
+}
+
+// Force simulation for floating bubbles
+let activeSimulation = null;
+function stopSimulation() {
+  if (activeSimulation) { activeSimulation.stop(); activeSimulation = null; }
+}
+
+function floatingForce(nodes, w, h, svg, onClickFn) {
+  stopSimulation();
+
+  const sim = d3.forceSimulation(nodes)
+    .force('x', d3.forceX(d => d.tx).strength(0.04))
+    .force('y', d3.forceY(d => d.ty).strength(0.04))
+    .force('collide', d3.forceCollide(d => d.r + 4).strength(0.8))
+    .force('charge', d3.forceManyBody().strength(-2))
+    .alphaDecay(0.008)
+    .velocityDecay(0.3)
+    .on('tick', () => {
+      svg.selectAll('.bubble-group')
+        .attr('transform', d => `translate(${d.x},${d.y})`);
+    });
+
+  // Gentle random nudges for floating effect
+  const nudgeInterval = setInterval(() => {
+    if (!activeSimulation) { clearInterval(nudgeInterval); return; }
+    nodes.forEach(d => {
+      d.vx += (Math.random() - 0.5) * 0.8;
+      d.vy += (Math.random() - 0.5) * 0.8;
+    });
+    sim.alpha(0.1).restart();
+  }, 2000);
+
+  activeSimulation = sim;
+  return sim;
+}
+
+function drawBubbleLevel0() {
+  bubbleLevel = 0;
+  bubblePath = ['전체'];
+  updateBubbleNav();
+
+  const svg = d3.select('#bubble-svg');
+  svg.selectAll('*').remove();
+  const w = document.getElementById('bubble-container').clientWidth;
+  const h = 620;
+  const defs = ensureDefs(svg);
+
+  const nodes = BRANDS.map((b, i) => {
+    const r = 40 + Math.sqrt(brandCounts[b]) * 4;
+    create3DBubbleGradient(defs, 'grad-' + i, BRAND_COLORS[b]);
+    return {
+      id: b, r: r, color: BRAND_COLORS[b], gradId: 'grad-' + i,
+      label: b + (b === '리베르' ? ' ★' : ''), count: brandCounts[b],
+      x: w/2 + (Math.random()-0.5)*200, y: h/2 + (Math.random()-0.5)*200,
+      tx: w/2 + (i - 2) * 140, ty: h/2
+    };
+  });
+
+  const g = svg.append('g');
+  const groups = g.selectAll('.bubble-group').data(nodes).enter()
+    .append('g').attr('class', 'bubble-group')
+    .on('click', (e, d) => { e.stopPropagation(); drawBubbleLevel1(d.id); });
+
+  // Shadow
+  groups.append('circle').attr('class','bubble-shadow')
+    .attr('r', d => d.r * 0.85).attr('cx', 0).attr('cy', d => d.r * 0.15)
+    .attr('fill', 'rgba(0,0,0,0.25)').attr('filter', 'blur(8px)');
+
+  // Main sphere
+  groups.append('circle').attr('class','bubble-main')
+    .attr('r', 0).attr('fill', d => `url(#${d.gradId})`)
+    .attr('filter', d => `url(#${d.gradId}-shadow)`)
+    .transition().duration(800).ease(d3.easeElasticOut.amplitude(1).period(0.5))
+    .attr('r', d => d.r);
+
+  // Shine highlight
+  groups.append('ellipse').attr('class','bubble-shine')
+    .attr('cx', d => -d.r * 0.2).attr('cy', d => -d.r * 0.25)
+    .attr('rx', d => d.r * 0.35).attr('ry', d => d.r * 0.2)
+    .attr('fill', d => `url(#${d.gradId}-shine)`)
+    .attr('opacity', 0)
+    .transition().delay(400).duration(600).attr('opacity', 0.9);
+
+  // Text
+  const isDark = b => ['비비앙','멈칫','스너글'].includes(b);
+  groups.append('text').attr('text-anchor','middle').attr('dy','-0.3em')
+    .attr('fill', d => isDark(d.id) ? '#333' : '#fff')
+    .attr('font-size', d => Math.max(13, d.r/3.5) + 'px')
+    .attr('font-weight','700').attr('pointer-events','none')
+    .text(d => d.label).attr('opacity',0)
+    .transition().delay(500).duration(400).attr('opacity',1);
+
+  groups.append('text').attr('text-anchor','middle').attr('dy','1.3em')
+    .attr('fill', d => isDark(d.id) ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.7)')
+    .attr('font-size', d => Math.max(11, d.r/4.5) + 'px')
+    .attr('pointer-events','none')
+    .text(d => d.count + '건').attr('opacity',0)
+    .transition().delay(600).duration(400).attr('opacity',1);
+
+  floatingForce(nodes, w, h, svg);
+  svg.on('click', () => {});
+}
+
+function drawBubbleLevel1(brand) {
+  bubbleLevel = 1;
+  bubblePath = ['전체', brand];
+  updateBubbleNav();
+
+  const svg = d3.select('#bubble-svg');
+  svg.selectAll('*').remove();
+  const w = document.getElementById('bubble-container').clientWidth;
+  const h = 620;
+  const defs = ensureDefs(svg);
+  const opts = brandOptions[brand] || {};
+  const color = BRAND_COLORS[brand];
+  const maxVal = Math.max(...Object.values(opts));
+
+  const entries = Object.entries(opts);
+  const nodes = entries.map(([k,v], i) => {
+    const r = 30 + Math.sqrt(v) * 6;
+    const baseCol = d3.interpolate(color, '#ffffff')(0.1 - (v/maxVal)*0.1);
+    create3DBubbleGradient(defs, 'grad1-' + i, color);
+    return {
+      id: k, r: r, color: color, gradId: 'grad1-' + i,
+      label: k, count: v, opacity: 0.55 + (v/maxVal)*0.45,
+      x: w/2 + (Math.random()-0.5)*300, y: h/2 + (Math.random()-0.5)*300,
+      tx: w/2 + (Math.random()-0.5)*100, ty: h/2 + (Math.random()-0.5)*80
+    };
+  });
+
+  const g = svg.append('g');
+  const groups = g.selectAll('.bubble-group').data(nodes).enter()
+    .append('g').attr('class', 'bubble-group')
+    .on('click', (e, d) => { e.stopPropagation(); drawBubbleLevel2(brand, d.id); });
+
+  groups.append('circle').attr('class','bubble-shadow')
+    .attr('r', d => d.r * 0.8).attr('cx', 0).attr('cy', d => d.r * 0.12)
+    .attr('fill', 'rgba(0,0,0,0.2)').attr('filter', 'blur(6px)');
+
+  groups.append('circle').attr('class','bubble-main')
+    .attr('r', 0).attr('fill', d => `url(#${d.gradId})`)
+    .attr('opacity', d => d.opacity)
+    .attr('filter', d => `url(#${d.gradId}-shadow)`)
+    .transition().duration(700).ease(d3.easeElasticOut.amplitude(1).period(0.6))
+    .attr('r', d => d.r);
+
+  groups.append('ellipse').attr('class','bubble-shine')
+    .attr('cx', d => -d.r * 0.18).attr('cy', d => -d.r * 0.22)
+    .attr('rx', d => d.r * 0.3).attr('ry', d => d.r * 0.18)
+    .attr('fill', d => `url(#${d.gradId}-shine)`)
+    .attr('opacity', 0)
+    .transition().delay(350).duration(500).attr('opacity', 0.8);
+
+  const isDark = ['비비앙','멈칫','스너글'].includes(brand);
+  groups.append('text').attr('text-anchor','middle').attr('dy','-0.3em')
+    .attr('fill', isDark ? '#333' : '#fff')
+    .attr('font-size', d => Math.max(10, Math.min(14, d.r/3.2)) + 'px')
+    .attr('font-weight','600').attr('pointer-events','none')
+    .text(d => d.label).attr('opacity',0)
+    .transition().delay(400).duration(400).attr('opacity',1);
+
+  groups.append('text').attr('text-anchor','middle').attr('dy','1.2em')
+    .attr('fill', isDark ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,.6)')
+    .attr('font-size', d => Math.max(9, d.r/4.5) + 'px')
+    .attr('pointer-events','none')
+    .text(d => d.count + '건').attr('opacity',0)
+    .transition().delay(500).duration(400).attr('opacity',1);
+
+  floatingForce(nodes, w, h, svg);
+  svg.on('click', () => drawBubbleLevel0());
+}
+
+function drawBubbleLevel2(brand, option) {
+  bubbleLevel = 2;
+  bubblePath = ['전체', brand, option];
+  updateBubbleNav();
+
+  const svg = d3.select('#bubble-svg');
+  svg.selectAll('*').remove();
+  const w = document.getElementById('bubble-container').clientWidth;
+  const h = 620;
+  const defs = ensureDefs(svg);
+  const color = BRAND_COLORS[brand];
+
+  const posKws = ['향 좋음','지속력 좋음','분사력 좋음','가성비','재구매','탈취','빨래/침구'];
+  const negKws = ['지속력 부족','향 불만'];
+
+  const all = [...posKws, ...negKws].map(kw => ({
+    id: kw, value: kwData[kw][brand] || 0, label: kw, isNeg: negKws.includes(kw)
+  })).filter(d => d.value > 0);
+
+  const maxVal = Math.max(...all.map(d => d.value));
+  const nodes = all.map((d, i) => {
+    const r = 25 + Math.sqrt(d.value) * 7;
+    const c = d.isNeg ? '#ff6b6b' : color;
+    create3DBubbleGradient(defs, 'grad2-' + i, c);
+    return {
+      ...d, r: r, color: c, gradId: 'grad2-' + i,
+      x: w/2 + (Math.random()-0.5)*300, y: h/2 + (Math.random()-0.5)*300,
+      tx: w/2 + (Math.random()-0.5)*80, ty: h/2 + (Math.random()-0.5)*60
+    };
+  });
+
+  const g = svg.append('g');
+  const groups = g.selectAll('.bubble-group').data(nodes).enter()
+    .append('g').attr('class', 'bubble-group');
+
+  groups.append('circle').attr('class','bubble-shadow')
+    .attr('r', d => d.r * 0.8).attr('cx', 0).attr('cy', d => d.r * 0.12)
+    .attr('fill', 'rgba(0,0,0,0.2)').attr('filter', 'blur(6px)');
+
+  groups.append('circle').attr('class','bubble-main')
+    .attr('r', 0).attr('fill', d => `url(#${d.gradId})`)
+    .attr('opacity', 0.85)
+    .attr('filter', d => `url(#${d.gradId}-shadow)`)
+    .transition().duration(700).ease(d3.easeElasticOut.amplitude(1).period(0.6))
+    .attr('r', d => d.r);
+
+  groups.append('ellipse').attr('class','bubble-shine')
+    .attr('cx', d => -d.r * 0.18).attr('cy', d => -d.r * 0.22)
+    .attr('rx', d => d.r * 0.28).attr('ry', d => d.r * 0.16)
+    .attr('fill', d => `url(#${d.gradId}-shine)`)
+    .attr('opacity', 0)
+    .transition().delay(350).duration(500).attr('opacity', 0.8);
+
+  groups.append('text').attr('text-anchor','middle').attr('dy','-0.3em')
+    .attr('fill','#fff')
+    .attr('font-size', d => Math.max(10, d.r/3) + 'px')
+    .attr('font-weight','600').attr('pointer-events','none')
+    .text(d => d.label).attr('opacity',0)
+    .transition().delay(400).duration(400).attr('opacity',1);
+
+  groups.append('text').attr('text-anchor','middle').attr('dy','1.2em')
+    .attr('fill','rgba(255,255,255,.6)')
+    .attr('font-size', d => Math.max(9, d.r/4) + 'px')
+    .attr('pointer-events','none')
+    .text(d => d.value.toFixed(1) + '%').attr('opacity',0)
+    .transition().delay(500).duration(400).attr('opacity',1);
+
+  floatingForce(nodes, w, h, svg);
+  svg.on('click', () => drawBubbleLevel1(brand));
+}
+
+function updateBubbleNav() {
+  const nav = document.getElementById('bubble-nav');
+  nav.innerHTML = bubblePath.map((p, i) => {
+    const isCurrent = i === bubblePath.length - 1;
+    const sep = i > 0 ? '<span class="sep">›</span>' : '';
+    return sep + `<span class="${isCurrent ? 'current' : ''}" onclick="navTo(${i})">${p}</span>`;
+  }).join('');
+}
+
+function navTo(level) {
+  if(level === 0) drawBubbleLevel0();
+  else if(level === 1) drawBubbleLevel1(bubblePath[1]);
+}
+
+// Compare bars
+function drawCompareBars() {
+  const container = document.getElementById('compare-bars');
+  const metrics = ['향 좋음','지속력 좋음','재구매','탈취','빨래/침구','향 불만','지속력 부족'];
+  container.innerHTML = metrics.map(kw => {
+    const bars = BRANDS.map(b => {
+      const val = kwData[kw][b];
+      return `<div class="compare-bar ${BRAND_CLASS[b]}" style="width:${val * 1.5}%">${val > 5 ? val.toFixed(0)+'%' : ''}</div>`;
+    }).join('');
+    return `<div class="compare-row">
+      <div class="compare-label">${kw}</div>
+      <div class="compare-bars">${bars}</div>
+    </div>`;
+  }).join('');
+
+  // Legend
+  container.innerHTML += `<div style="display:flex;gap:16px;margin-top:12px;font-size:11px;color:var(--text2)">
+    ${BRANDS.map(b => `<span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${BRAND_COLORS[b]}"></span> ${b}${b==='리베르'?' ★':''}</span>`).join('')}
+  </div>`;
+}
+
+// ═══════════════════════════════════════
+// KEYWORD TAB
+// ═══════════════════════════════════════
+function initKeyword() {
+  const grid = document.getElementById('kw-grid');
+  const posKws = ['향 좋음','지속력 좋음','분사력 좋음','가성비','재구매','탈취','빨래/침구'];
+  const negKws = ['지속력 부족','향 불만'];
+
+  grid.innerHTML = BRANDS.map(brand => {
+    const color = BRAND_COLORS[brand];
+    const isOurs = brand === '리베르';
+    const posBars = posKws.map(kw => {
+      const val = kwData[kw][brand];
+      return `<div class="kw-bar-row">
+        <div class="kw-bar-label">${kw}</div>
+        <div class="kw-bar-track"><div class="kw-bar-fill" style="width:${val}%;background:${color}"></div></div>
+        <div class="kw-bar-val">${val.toFixed(1)}%</div>
+      </div>`;
+    }).join('');
+    const negBars = negKws.map(kw => {
+      const val = kwData[kw][brand];
+      return `<div class="kw-bar-row">
+        <div class="kw-bar-label">${kw}</div>
+        <div class="kw-bar-track"><div class="kw-bar-fill" style="width:${val*3}%;background:#ff6b6b"></div></div>
+        <div class="kw-bar-val">${val.toFixed(1)}%</div>
+      </div>`;
+    }).join('');
+
+    return `<div class="kw-card" style="${isOurs?'border-color:var(--liber)':''}">
+      <div class="brand-name"><span class="brand-dot" style="background:${color}"></span>${brand}${isOurs?' ★':''} <span style="font-weight:400;font-size:12px;color:var(--text2)">${brandCounts[brand]}건</span></div>
+      <div class="kw-section-title">👍 장점</div>
+      ${posBars}
+      <div class="kw-section-title" style="margin-top:16px">👎 단점</div>
+      ${negBars}
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════
+// VOICE TAB (Sentiment + Reviews)
+// ═══════════════════════════════════════
+function initVoice() {
+  // Filter buttons
+  const filter = document.getElementById('voice-filter');
+  filter.innerHTML = `<button class="active" data-brand="">전체</button>` +
+    BRANDS.map(b => `<button data-brand="${b}">${b}${b==='리베르'?' ★':''}</button>`).join('');
+
+  filter.querySelectorAll('button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      filter.querySelectorAll('button').forEach(x => x.classList.remove('active'));
+      btn.classList.add('active');
+      renderVoice(btn.dataset.brand);
+    });
+  });
+
+  // Sentiment donuts
+  const sentGrid = document.getElementById('sent-grid');
+  sentGrid.innerHTML = BRANDS.map(brand => {
+    const s = sentData[brand];
+    const color = BRAND_COLORS[brand];
+    const isOurs = brand === '리베르';
+    return `<div class="sent-card" style="${isOurs?'border-color:var(--liber)':''}">
+      <div class="brand-name"><span class="brand-dot" style="background:${color}"></span>${brand}${isOurs?' ★':''}</div>
+      <div class="donut-wrap"><svg class="donut" data-brand="${brand}" width="120" height="120"></svg></div>
+      <div class="sent-legend">
+        <span><span class="dot" style="background:var(--pos)"></span>긍정 ${s.긍정.toFixed(0)}%</span>
+        <span><span class="dot" style="background:var(--neg)"></span>부정 ${s.부정.toFixed(0)}%</span>
+        <span><span class="dot" style="background:var(--mix)"></span>혼합 ${s.혼합.toFixed(0)}%</span>
+        <span><span class="dot" style="background:var(--neutral)"></span>중립 ${s.중립.toFixed(0)}%</span>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Draw donuts
+  document.querySelectorAll('.donut').forEach(svg => {
+    const brand = svg.dataset.brand;
+    const s = sentData[brand];
+    const data = [
+      {label:'긍정',value:s.긍정,color:'#6bcb77'},
+      {label:'부정',value:s.부정,color:'#ff6b6b'},
+      {label:'혼합',value:s.혼합,color:'#ffd93d'},
+      {label:'중립',value:s.중립,color:'#666'},
+    ];
+    const w=120, h=120, r=50, inner=32;
+    const g = d3.select(svg).append('g').attr('transform',`translate(${w/2},${h/2})`);
+    const arc = d3.arc().innerRadius(inner).outerRadius(r);
+    const pie = d3.pie().value(d=>d.value).sort(null);
+    g.selectAll('path').data(pie(data)).enter().append('path')
+      .attr('d', arc).attr('fill', d=>d.data.color).attr('stroke', '#12121a').attr('stroke-width', 2);
+    g.append('text').attr('text-anchor','middle').attr('dy','0.35em')
+      .attr('fill','#fff').attr('font-size','16px').attr('font-weight','700')
+      .text(s.긍정.toFixed(0)+'%');
+  });
+
+  renderVoice('');
+}
+
+// Sample reviews (embedded from data)
+const sampleReviews = {
+  '리베르': {
+    pos: [
+      {text:'사이로 입문 했다가 선드라이에 정착했어요. 이거 뿌리고 나가면 다들 향수 뭐 뿌렸냐고 물어보고, 특히 봄 여름에 진짜 뿌리기 좋은 빨래 끝난 뒤 향이에요.', opt:'선드라이'},
+      {text:'비누향이나서 향도 좋고 은은하면서 잔향이 나서 매우 마음에 드네요. 독하지 않고 분사력이 고르게 되어서 옷이나 침구에 뿌리기도 좋았습니다.', opt:'선드라이'},
+      {text:'향이 강하긴한데 한 번만 뿌려주면 그렇게 머리 아픈 향은 아니예요. 비누향이고 지속력도 좋은 편입니다. 분사력이 좋고 안개처럼 분사돼요.', opt:'사이'},
+    ],
+    neg: [
+      {text:'향이 좀 강한 편이에요. 코가 예민한 분은 처음에 부담스러울 수 있어요.', opt:'사이'},
+      {text:'지속력은 좋지만 처음 뿌릴 때 알코올 느낌이 살짝 있어요.', opt:'헤베'},
+    ]
+  },
+  '비비앙': {
+    pos: [
+      {text:'최최최애향 비누향인것같으면서도 고급스러운 뭔가 프레쉬한 향이에요. 머리아픈향 아니고 분사력 좋습니다.', opt:'월넛크릭그린'},
+      {text:'요즘 핫하다는 비비앙 섬유향수~ 친구들이 향수 대신 많이 사용해서 저도 픽 했어요. 콜린으로 선택했는데 완전 만족!', opt:'콜린'},
+    ],
+    neg: [
+      {text:'섬유향수라서 지속력이 짧을걸 예상했지만 이렇게 짧은지 몰랐네요. 한 3분만에 향이 사라집니다ㅠ', opt:'월넛크릭그린'},
+      {text:'향이 잘 날아가서 가지고 다니면서 수시로 뿌려요.', opt:'에끌로에'},
+    ]
+  },
+  '멈칫': {
+    pos: [
+      {text:'비누처럼 깨끗하고 포근한 소프트블루솝 향이라 남녀불문 데일리 섬유향수로 좋아요!! 향이 은은하면서도 의류와 공간에 오래 남아요.', opt:'소프트블루솝'},
+      {text:'너무 맘에 들어서 하나 더 구매했어요!! 탈취제라는 느낌보다는 정말 향수라고 생각 될만큼 향도 좋고 유지력도 좋아요.', opt:'마젠타레이디'},
+    ],
+    neg: [
+      {text:'조은데 뿌렸을 때 느껴지는 그 강한 냄새가 계속 지속되서 그부분이 별로예요.', opt:'화이트코튼'},
+      {text:'향이 중성적인 비누향이라 호불호는 살짝 있을 거 같아요.', opt:'퍼플머스크'},
+    ]
+  },
+  'w드레스룸': {
+    pos: [
+      {text:'항상 재구매하고 쟁여놓고 사용하는 제품이에요. 휘뚜루마뚜루입니다.', opt:'플라워 샵'},
+      {text:'학교 가기전에 3번씩 뿌리고 나가는데 꽃향기 미쳤어요. 냄새 넘 좋고 조금 뿌려도 지속력 좋아서 향이 오랫동안 유지돼요!', opt:'플라워 샵'},
+    ],
+    neg: [
+      {text:'펌핑을 하면 위로 다시 올라와야하는데 몽둥이 맞은 두더지마냥 박혀요ㅠ 한번 뿌리고 다시 빼내서 뿌리고...', opt:'탠저린 팜'},
+    ]
+  },
+  '스너글': {
+    pos: [
+      {text:'스너글 없이 못살아 정말 못살아. 쟁여 놓은 거 또 다 써가서 할인할 때 구매할 예정.', opt:'블루 스파클'},
+      {text:'향도 좋고 용량도 커서 좋아요!! 여기저기 뿌리기 넘 좋은 제품.', opt:'허거블 코튼'},
+    ],
+    neg: [
+      {text:'냄새가 쎄긴 한데 좋긴 좋더라구요. 무엇보다 주변에서 좋아하는 사람이 많아요.', opt:'블루 스파클'},
+    ]
+  },
+};
+
+function renderVoice(brandFilter) {
+  const grid = document.getElementById('voice-grid');
+  const brands = brandFilter ? [brandFilter] : BRANDS;
+
+  let posHTML = '', negHTML = '';
+  brands.forEach(b => {
+    const color = BRAND_COLORS[b];
+    const reviews = sampleReviews[b] || {pos:[], neg:[]};
+    reviews.pos.forEach(r => {
+      posHTML += `<div class="voice-item">
+        <div class="v-brand"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${color}"></span>${b}</div>
+        ${r.text}
+        <div class="v-option">📌 ${r.opt}</div>
+      </div>`;
+    });
+    reviews.neg.forEach(r => {
+      negHTML += `<div class="voice-item" style="border-left:3px solid #ff6b6b">
+        <div class="v-brand"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${color}"></span>${b}</div>
+        ${r.text}
+        <div class="v-option">📌 ${r.opt}</div>
+      </div>`;
+    });
+  });
+
+  grid.innerHTML = `
+    <div class="voice-col"><h3>👍 긍정 리뷰</h3>${posHTML}</div>
+    <div class="voice-col"><h3>👎 부정/개선 리뷰</h3>${negHTML}</div>
+  `;
+}
+
+// ═══════════════════════════════════════
+// RAW DATA TAB
+// ═══════════════════════════════════════
+let allRawData = [];
+
+async function loadRawData() {
+  // Parse CSV from embedded data (simplified — we use the pre-analyzed data)
+  try {
+    const resp = await fetch('/mnt/user-data/uploads/reviews_섬유향수_all.csv');
+    const text = await resp.text();
+    // Simple CSV parse
+    const lines = text.split('\n');
+    const headers = lines[0].replace(/^\uFEFF/,'').split(',');
+    allRawData = lines.slice(1).filter(l=>l.trim()).map(line => {
+      const vals = parseCSVLine(line);
+      const obj = {};
+      headers.forEach((h,i) => obj[h.trim()] = (vals[i]||'').trim());
+      return obj;
+    });
+  } catch(e) {
+    // Fallback: generate sample data
+    allRawData = [];
+  }
+  initRawFilters();
+  renderRaw();
+}
+
+function parseCSVLine(line) {
+  const result = [];
+  let current = '', inQuotes = false;
+  for(let i=0; i<line.length; i++) {
+    const c = line[i];
+    if(c === '"') { inQuotes = !inQuotes; }
+    else if(c === ',' && !inQuotes) { result.push(current); current = ''; }
+    else { current += c; }
+  }
+  result.push(current);
+  return result;
+}
+
+function classifySentiment(text) {
+  const posWords = ['좋아','좋은','좋고','최고','만족','추천','대박','사랑','은은','고급','깔끔','상쾌','부드러','포근','재구매','쟁여','인생','미쳤','완벽','향기'];
+  const negWords = ['별로','실망','아쉬','안좋','역한','두통','머리아','강한','인공','호불호','짧은','날아가','안남','환불','후회','불만'];
+  const pos = posWords.filter(w => text.includes(w)).length;
+  const neg = negWords.filter(w => text.includes(w)).length;
+  if(pos > neg) return '긍정';
+  if(neg > pos) return '부정';
+  if(pos > 0) return '혼합';
+  return '중립';
+}
+
+function initRawFilters() {
+  const brandSel = document.getElementById('raw-brand-filter');
+  BRANDS.forEach(b => {
+    const opt = document.createElement('option');
+    opt.value = b; opt.textContent = b;
+    brandSel.appendChild(opt);
+  });
+  const sentSel = document.getElementById('raw-sent-filter');
+  ['긍정','부정','혼합','중립'].forEach(s => {
+    const opt = document.createElement('option');
+    opt.value = s; opt.textContent = s;
+    sentSel.appendChild(opt);
+  });
+
+  document.getElementById('raw-search').addEventListener('input', renderRaw);
+  brandSel.addEventListener('change', renderRaw);
+  sentSel.addEventListener('change', renderRaw);
+}
+
+function renderRaw() {
+  const search = document.getElementById('raw-search').value.toLowerCase();
+  const brand = document.getElementById('raw-brand-filter').value;
+  const sent = document.getElementById('raw-sent-filter').value;
+
+  let filtered = allRawData.filter(r => {
+    if(brand && r.brand !== brand) return false;
+    const text = (r.review_text || '');
+    const s = classifySentiment(text);
+    if(sent && s !== sent) return false;
+    if(search && !text.toLowerCase().includes(search)) return false;
+    return true;
+  });
+
+  document.getElementById('raw-count').textContent = `${filtered.length}건`;
+
+  const tbody = document.getElementById('raw-tbody');
+  tbody.innerHTML = filtered.slice(0, 200).map(r => {
+    const s = classifySentiment(r.review_text || '');
+    const sColor = s==='긍정'?'var(--pos)':s==='부정'?'var(--neg)':s==='혼합'?'var(--mix)':'var(--neutral)';
+    const opt = (r.option||'').replace('[옵션] ','').replace('[한정기획] ','').replace('[시그니처] ','');
+    return `<tr>
+      <td><span style="color:${BRAND_COLORS[r.brand]||'#fff'};font-weight:600">${r.brand||''}</span></td>
+      <td style="font-size:11px">${opt}</td>
+      <td title="${(r.review_text||'').replace(/"/g,'&quot;')}">${(r.review_text||'').substring(0,120)}${(r.review_text||'').length>120?'...':''}</td>
+      <td><span style="color:${sColor};font-weight:600">${s}</span></td>
+      <td style="font-size:11px;color:var(--text2)">${r.date||''}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════
+initBubble();
+drawCompareBars();
+initKeyword();
+initVoice();
+loadRawData();
+</script>
+</body>
+</html>
